@@ -8,6 +8,7 @@ public class InteractableObject : MonoBehaviour
     private Rigidbody rb;
     private BoxCollider boxCollider;
     private Transform originalParent;
+    private ShelfSlot currentShelfSlot;
     private bool isHeld;
 
     public bool IsHeld => isHeld;
@@ -23,6 +24,11 @@ public class InteractableObject : MonoBehaviour
         if (isHeld || holdPoint == null)
             return;
 
+        if (currentShelfSlot != null)
+        {
+            currentShelfSlot.Release(this);
+            currentShelfSlot = null;
+        }
         originalParent = transform.parent;
 
         rb.isKinematic = true;
@@ -117,5 +123,9 @@ public class InteractableObject : MonoBehaviour
             return;
 
         transform.Rotate(0f, angle, 0f, Space.Self);
+    }
+    public void SetShelfSlot(ShelfSlot slot)
+    {
+        currentShelfSlot = slot;
     }
 }

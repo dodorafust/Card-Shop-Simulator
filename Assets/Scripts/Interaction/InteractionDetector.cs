@@ -95,6 +95,7 @@ public class InteractionDetector : MonoBehaviour
         currentTarget = detectedTarget;
     }
 
+
     private bool TryGetPlacementHit(out RaycastHit hit)
     {
         if (Physics.Raycast(
@@ -111,6 +112,10 @@ public class InteractionDetector : MonoBehaviour
         return false;
     }
 
+
+
+
+
     private void TryPlaceHeldObject()
     {
         if (!TryGetPlacementHit(out RaycastHit hit))
@@ -119,12 +124,42 @@ public class InteractionDetector : MonoBehaviour
             return;
         }
 
-        if (heldObject.TryPlaceAt(hit.point))
+        ShelfPlacementZone shelfZone =
+            hit.collider.GetComponentInParent<ShelfPlacementZone>();
+
+        if (shelfZone == null)
+        {
+            Debug.Log("Chỉ có thể đặt sản phẩm lên kệ.");
+            return;
+        }
+
+        ShelfSlot slot =
+            shelfZone.FindNearestEmptySlot(hit.point);
+
+        if (slot == null)
+        {
+            Debug.Log("Kệ không còn vị trí trống.");
+            return;
+        }
+
+        if (!heldObject.CanPlaceAt(
+            slot.transform.position,
+            out _,
+            out _))
+        {
+            Debug.Log("Vị trí slot không hợp lệ.");
+            return;
+        }
+
+        if (shelfZone.TryPlaceInSlot(heldObject, slot))
         {
             heldObject = null;
             DestroyPreview();
         }
     }
+
+
+
 
     private void CreatePreview()
     {
@@ -163,6 +198,7 @@ public class InteractionDetector : MonoBehaviour
         previewObject.SetActive(false);
     }
 
+
     private void UpdatePlacementPreview()
     {
         if (heldObject == null || previewObject == null)
@@ -174,8 +210,26 @@ public class InteractionDetector : MonoBehaviour
             return;
         }
 
+        ShelfPlacementZone shelfZone =
+            hit.collider.GetComponentInParent<ShelfPlacementZone>();
+
+        if (shelfZone == null)
+        {
+            previewObject.SetActive(false);
+            return;
+        }
+
+        ShelfSlot slot =
+            shelfZone.FindNearestEmptySlot(hit.point);
+
+        if (slot == null)
+        {
+            previewObject.SetActive(false);
+            return;
+        }
+
         bool isValid = heldObject.CanPlaceAt(
-            hit.point,
+            slot.transform.position,
             out Vector3 position,
             out Quaternion rotation);
 
@@ -185,6 +239,7 @@ public class InteractionDetector : MonoBehaviour
 
         SetPreviewColor(isValid ? validColor : invalidColor);
     }
+
 
     private void SetPreviewColor(Color color)
     {
