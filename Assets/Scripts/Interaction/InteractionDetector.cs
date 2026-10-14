@@ -193,20 +193,43 @@ public class InteractionDetector : MonoBehaviour
             return;
         }
 
-        if (!shopPlacementArea.ContainsPoint(hit.point))
-        {
-            Debug.Log("Không thể đặt nội thất ngoài cửa hàng.");
-            return;
-        }
+        // Tính vị trí và góc xoay dự kiến của nội thất.
+        Quaternion furnitureRotation =
+            heldObject.GetFurnitureRotation();
 
         if (!heldObject.CanPlaceAt(
             hit.point,
             out Vector3 position,
-            out Quaternion rotation))
+            out _))
         {
             Debug.Log("Vị trí đặt nội thất bị chặn.");
             return;
         }
+
+        // Tính nửa kích thước vùng chiếm chỗ.
+        BoxCollider furnitureCollider =
+            heldObject.GetComponent<BoxCollider>();
+
+        if (furnitureCollider == null)
+        {
+            Debug.LogWarning("Nội thất không có BoxCollider.");
+            return;
+        }
+
+        Vector3 halfExtents = Vector3.Scale(
+            furnitureCollider.size,
+            heldObject.transform.lossyScale) * 0.5f;
+
+        // Kiểm tra toàn bộ vùng chiếm chỗ nằm trong cửa hàng.
+        if (!shopPlacementArea.ContainsFootprint(
+            position,
+            halfExtents,
+            furnitureRotation))
+        {
+            Debug.Log("Không thể đặt: nội thất vượt ranh giới cửa hàng.");
+            return;
+        }
+
 
         if (heldObject.TryPlaceAt(hit.point))
         {
@@ -275,10 +298,10 @@ public class InteractionDetector : MonoBehaviour
 
         // Nhánh đặt nội thất tự do trong cửa hàng.
 
+
         if (heldObject.Type == PlacementType.Furniture)
         {
-            if (shopPlacementArea == null ||
-                !shopPlacementArea.ContainsPoint(hit.point))
+            if (shopPlacementArea == null)
             {
                 previewObject.SetActive(false);
                 return;
@@ -292,6 +315,19 @@ public class InteractionDetector : MonoBehaviour
             Quaternion furnitureRotation =
                 heldObject.GetFurnitureRotation();
 
+            // Kiểm tra toàn bộ vùng chiếm chỗ của nội thất.
+            Vector3 halfExtents =
+                Vector3.Scale(
+                    heldObject.GetComponent<BoxCollider>().size,
+                    heldObject.transform.lossyScale) * 0.5f;
+
+            bool insideShop = shopPlacementArea.ContainsFootprint(
+                furniturePosition,
+                halfExtents,
+                furnitureRotation);
+
+            isValid = isValid && insideShop;
+
             previewObject.SetActive(true);
             previewObject.transform.SetPositionAndRotation(
                 furniturePosition,
@@ -300,6 +336,7 @@ public class InteractionDetector : MonoBehaviour
             SetPreviewColor(isValid ? validColor : invalidColor);
             return;
         }
+
 
 
         // Nhánh hàng hóa: giữ nguyên cơ chế preview theo slot kệ.

@@ -24,4 +24,31 @@ public class ShopPlacementArea : MonoBehaviour
                localPoint.z >= center.z - halfSize.z &&
                localPoint.z <= center.z + halfSize.z;
     }
+
+    public bool ContainsFootprint(
+        Vector3 worldCenter,
+        Vector3 halfExtents,
+        Quaternion worldRotation)
+    {
+        // Bốn góc của vùng chiếm chỗ trên mặt phẳng XZ.
+        Vector3[] corners =
+        {
+        new Vector3(-halfExtents.x, 0f, -halfExtents.z),
+        new Vector3(-halfExtents.x, 0f,  halfExtents.z),
+        new Vector3( halfExtents.x, 0f, -halfExtents.z),
+        new Vector3( halfExtents.x, 0f,  halfExtents.z)
+    };
+
+        foreach (Vector3 corner in corners)
+        {
+            Vector3 worldCorner =
+                worldCenter + worldRotation * corner;
+
+            if (!ContainsPoint(worldCorner))
+                return false;
+        }
+
+        return true;
+    }
+
 }
