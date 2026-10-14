@@ -12,9 +12,12 @@ public class InteractionDetector : MonoBehaviour
     [SerializeField] private Color validColor = Color.green;
     [SerializeField] private Color invalidColor = Color.red;
 
+    [SerializeField]
+    private ShopPlacementArea shopPlacementArea;
     private InteractableObject currentTarget;
     private InteractableObject heldObject;
     private InputSystem_Actions inputActions;
+    private float furnitureRotationY;
 
     private GameObject previewObject;
     private MeshRenderer previewRenderer;
@@ -63,6 +66,12 @@ public class InteractionDetector : MonoBehaviour
                 if (currentTarget.IsHeld)
                 {
                     heldObject = currentTarget;
+
+                    if (heldObject.Type == PlacementType.Furniture)
+                    {
+
+                    }
+
                     CreatePreview();
                 }
             }
@@ -116,8 +125,19 @@ public class InteractionDetector : MonoBehaviour
 
 
 
+
     private void TryPlaceHeldObject()
     {
+        if (heldObject == null)
+            return;
+
+        if (heldObject.Type == PlacementType.Furniture)
+        {
+            TryPlaceFurniture();
+            return;
+        }
+
+        // Giữ nguyên quy tắc đặt hàng hóa lên kệ.
         if (!TryGetPlacementHit(out RaycastHit hit))
         {
             Debug.Log("Không tìm thấy bề mặt đặt phù hợp.");
@@ -157,6 +177,48 @@ public class InteractionDetector : MonoBehaviour
             DestroyPreview();
         }
     }
+
+    private void TryPlaceFurniture()
+    {
+        if (shopPlacementArea == null)
+        {
+            Debug.LogWarning(
+                "Chưa gán ShopPlacementArea trong Inspector.");
+            return;
+        }
+
+        if (!TryGetPlacementHit(out RaycastHit hit))
+        {
+            Debug.Log("Không tìm thấy mặt sàn phù hợp.");
+            return;
+        }
+
+        if (!shopPlacementArea.ContainsPoint(hit.point))
+        {
+            Debug.Log("Không thể đặt nội thất ngoài cửa hàng.");
+            return;
+        }
+
+        if (!heldObject.CanPlaceAt(
+            hit.point,
+            out Vector3 position,
+            out Quaternion rotation))
+        {
+            Debug.Log("Vị trí đặt nội thất bị chặn.");
+            return;
+        }
+
+        if (heldObject.TryPlaceAt(hit.point))
+        {
+            heldObject.transform.SetPositionAndRotation(
+                position,
+                heldObject.GetFurnitureRotation());
+
+            heldObject = null;
+            DestroyPreview();
+        }
+    }
+
 
 
 
@@ -199,6 +261,7 @@ public class InteractionDetector : MonoBehaviour
     }
 
 
+
     private void UpdatePlacementPreview()
     {
         if (heldObject == null || previewObject == null)
@@ -210,6 +273,36 @@ public class InteractionDetector : MonoBehaviour
             return;
         }
 
+        // Nhánh đặt nội thất tự do trong cửa hàng.
+
+        if (heldObject.Type == PlacementType.Furniture)
+        {
+            if (shopPlacementArea == null ||
+                !shopPlacementArea.ContainsPoint(hit.point))
+            {
+                previewObject.SetActive(false);
+                return;
+            }
+
+            bool isValid = heldObject.CanPlaceAt(
+                hit.point,
+                out Vector3 furniturePosition,
+                out _);
+
+            Quaternion furnitureRotation =
+                heldObject.GetFurnitureRotation();
+
+            previewObject.SetActive(true);
+            previewObject.transform.SetPositionAndRotation(
+                furniturePosition,
+                furnitureRotation);
+
+            SetPreviewColor(isValid ? validColor : invalidColor);
+            return;
+        }
+
+
+        // Nhánh hàng hóa: giữ nguyên cơ chế preview theo slot kệ.
         ShelfPlacementZone shelfZone =
             hit.collider.GetComponentInParent<ShelfPlacementZone>();
 
@@ -228,17 +321,19 @@ public class InteractionDetector : MonoBehaviour
             return;
         }
 
-        bool isValid = heldObject.CanPlaceAt(
+        bool isProductValid = heldObject.CanPlaceAt(
             slot.transform.position,
-            out Vector3 position,
-            out Quaternion rotation);
+            out Vector3 productPosition,
+            out Quaternion productRotation);
 
         previewObject.SetActive(true);
         previewObject.transform.SetPositionAndRotation(
-            position, rotation);
+            productPosition,
+            productRotation);
 
-        SetPreviewColor(isValid ? validColor : invalidColor);
+        SetPreviewColor(isProductValid ? validColor : invalidColor);
     }
+
 
 
     private void SetPreviewColor(Color color)

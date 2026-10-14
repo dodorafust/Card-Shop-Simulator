@@ -1,8 +1,16 @@
 
 using UnityEngine;
 
+public enum PlacementType
+{
+    ShelfProduct,
+    Furniture
+}
+
+
 [RequireComponent(typeof(Rigidbody))]
 [RequireComponent(typeof(BoxCollider))]
+
 public class InteractableObject : MonoBehaviour
 {
     private Rigidbody rb;
@@ -10,6 +18,13 @@ public class InteractableObject : MonoBehaviour
     private Transform originalParent;
     private ShelfSlot currentShelfSlot;
     private bool isHeld;
+    private float furnitureRotationY;
+
+    [SerializeField]
+    private PlacementType placementType = PlacementType.ShelfProduct;
+
+    public PlacementType Type => placementType;
+
 
     public bool IsHeld => isHeld;
 
@@ -37,11 +52,38 @@ public class InteractableObject : MonoBehaviour
 
         boxCollider.enabled = false;
 
+        // Lưu góc xoay thế giới trước khi gắn vào HoldPoint.
+        if (placementType == PlacementType.Furniture)
+        {
+            furnitureRotationY = transform.eulerAngles.y;
+        }
+
+        if (placementType == PlacementType.Furniture)
+        {
+            furnitureRotationY = transform.eulerAngles.y;
+        }
+
         transform.SetParent(holdPoint, false);
         transform.localPosition = Vector3.zero;
-        transform.localRotation = Quaternion.identity;
+
+        if (placementType == PlacementType.Furniture)
+        {
+            transform.rotation = GetFurnitureRotation();
+        }
+        else
+        {
+            transform.localRotation = Quaternion.identity;
+        }
 
         isHeld = true;
+        // Nội thất được ẩn khi cầm, sản phẩm nhỏ vẫn hiển thị.
+        if (placementType == PlacementType.Furniture)
+        {
+            foreach (Renderer objectRenderer in GetComponentsInChildren<Renderer>())
+            {
+                objectRenderer.enabled = false;
+            }
+        }
         Debug.Log("Đã nhặt: " + gameObject.name);
     }
 
@@ -112,18 +154,45 @@ public class InteractableObject : MonoBehaviour
         boxCollider.enabled = true;
         rb.isKinematic = false;
         isHeld = false;
+        // Hiện lại mô hình sau khi đặt nội thất xuống.
+        if (placementType == PlacementType.Furniture)
+        {
+            foreach (Renderer objectRenderer in GetComponentsInChildren<Renderer>())
+            {
+                objectRenderer.enabled = true;
+            }
+        }
 
         Debug.Log("Đã đặt: " + gameObject.name);
         return true;
     }
+
 
     public void RotateHeld(float angle)
     {
         if (!isHeld)
             return;
 
-        transform.Rotate(0f, angle, 0f, Space.Self);
+        if (placementType == PlacementType.Furniture)
+        {
+            furnitureRotationY =
+                (furnitureRotationY + angle) % 360f;
+
+            transform.rotation = Quaternion.Euler(
+                0f, furnitureRotationY, 0f);
+        }
+        else
+        {
+            transform.Rotate(0f, angle, 0f, Space.Self);
+        }
     }
+
+    public Quaternion GetFurnitureRotation()
+    {
+        return Quaternion.Euler(
+            0f, furnitureRotationY, 0f);
+    }
+
     public void SetShelfSlot(ShelfSlot slot)
     {
         currentShelfSlot = slot;
