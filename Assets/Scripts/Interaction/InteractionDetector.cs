@@ -7,6 +7,7 @@ public class InteractionDetector : MonoBehaviour
     [Header("Detection")]
     [SerializeField] private float interactionDistance = 3f;
     [SerializeField] private Transform holdPoint;
+    [SerializeField] private Transform furnitureFloor;
 
     [Header("Placement Preview")]
     [SerializeField] private Color validColor = Color.green;
@@ -140,6 +141,84 @@ public class InteractionDetector : MonoBehaviour
         return false;
     }
 
+
+    private bool TryGetFurniturePreviewPoint(
+        out Vector3 previewPoint,
+        out bool isValidFloorHit)
+    {
+        previewPoint = Vector3.zero;
+        isValidFloorHit = false;
+
+        // Ưu tiên raycast sàn như logic hiện tại.
+        if (TryGetFurnitureFloorHit(out RaycastHit floorHit))
+        {
+            previewPoint = floorHit.point;
+            isValidFloorHit = true;
+            return true;
+        }
+
+        // Không chạm sàn: chỉ tìm vị trí dự phòng để hiển thị preview.
+        if (furnitureFloor == null)
+            return false;
+
+        Ray ray = new Ray(transform.position, transform.forward);
+
+        // Nếu tia nhìn chạm kệ hoặc vật cản,
+        // chiếu điểm va chạm xuống độ cao của sàn.
+        if (Physics.Raycast(
+            ray,
+            out RaycastHit obstacleHit,
+            interactionDistance,
+            Physics.DefaultRaycastLayers,
+            QueryTriggerInteraction.Ignore))
+        {
+            previewPoint = new Vector3(
+                obstacleHit.point.x,
+                furnitureFloor.position.y,
+                obstacleHit.point.z);
+
+            return true;
+        }
+
+        // Nếu không chạm vật thể nào, tìm giao điểm với mặt phẳng sàn.
+        float floorY = furnitureFloor.position.y;
+        float directionY = ray.direction.y;
+
+        if (Mathf.Abs(directionY) < 0.001f)
+        {
+            // Tia gần song song với sàn: dùng điểm cuối tầm nhìn,
+            // chiếu xuống mặt phẳng sàn để vẫn hiển thị preview.
+            Vector3 endPoint = ray.GetPoint(interactionDistance);
+
+            previewPoint = new Vector3(
+                endPoint.x,
+                floorY,
+                endPoint.z);
+
+            return true;
+        }
+
+        float distanceToFloor =
+            (floorY - ray.origin.y) / directionY;
+
+        if (distanceToFloor >= 0f &&
+            distanceToFloor <= interactionDistance)
+        {
+            previewPoint = ray.GetPoint(distanceToFloor);
+            return true;
+        }
+
+        // Không có giao điểm trong tầm nhìn: vẫn tạo điểm dự phòng
+        // trên sàn, nhưng điểm này không được xem là hợp lệ để đặt.
+        Vector3 fallbackPoint = ray.GetPoint(interactionDistance);
+
+        previewPoint = new Vector3(
+            fallbackPoint.x,
+            floorY,
+            fallbackPoint.z);
+
+        return true;
+    }
 
 
     private void TryPlaceHeldObject()
@@ -307,17 +386,30 @@ public class InteractionDetector : MonoBehaviour
             return;
 
 
+
         bool isFurniture =
             heldObject != null &&
             heldObject.Type == PlacementType.Furniture;
 
         bool hasValidHit;
-
         RaycastHit hit;
+        Vector3 furniturePreviewPoint = Vector3.zero;
+        bool isValidFurnitureFloorHit = false;
 
         if (isFurniture)
         {
-            hasValidHit = TryGetFurnitureFloorHit(out hit);
+            hasValidHit = TryGetFurniturePreviewPoint(
+                out furniturePreviewPoint,
+                out isValidFurnitureFloorHit);
+
+            // Dùng một RaycastHit giả để tái sử dụng phần xử lý bên dưới.
+            hit = default;
+
+            if (hasValidHit)
+            {
+                hit.point = furniturePreviewPoint;
+                hit.normal = Vector3.up;
+            }
         }
         else
         {
@@ -329,6 +421,7 @@ public class InteractionDetector : MonoBehaviour
             previewObject.SetActive(false);
             return;
         }
+
 
 
         // Nhánh đặt nội thất tự do trong cửa hàng.
@@ -361,7 +454,10 @@ public class InteractionDetector : MonoBehaviour
                 halfExtents,
                 furnitureRotation);
 
-            isValid = isValid && insideShop;
+            isValid =
+                isValid &&
+                insideShop &&
+                isValidFurnitureFloorHit;
 
             previewObject.SetActive(true);
             previewObject.transform.SetPositionAndRotation(

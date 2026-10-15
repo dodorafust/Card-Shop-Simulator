@@ -274,6 +274,9 @@ MonoBehaviour:
   holdPoint: {fileID: 1461382357}
   validColor: {r: 0, g: 1, b: 0, a: 1}
   invalidColor: {r: 1, g: 0, b: 0, a: 1}
+  floorLayer:
+    serializedVersion: 2
+    m_Bits: 64
   shopPlacementArea: {fileID: 2119383148}
 --- !u!1 &276750371
 GameObject:
@@ -1659,7 +1662,7 @@ GameObject:
   - component: {fileID: 1842313635}
   - component: {fileID: 1842313634}
   - component: {fileID: 1842313633}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: Ground
   m_TagString: Untagged
   m_Icon: {fileID: 0}
