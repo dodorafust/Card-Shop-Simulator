@@ -12,6 +12,9 @@ public class InteractionDetector : MonoBehaviour
     [SerializeField] private Color validColor = Color.green;
     [SerializeField] private Color invalidColor = Color.red;
 
+    [Header("Furniture Placement")]
+    [SerializeField] private LayerMask floorLayer;
+
     [SerializeField]
     private ShopPlacementArea shopPlacementArea;
     private InteractableObject currentTarget;
@@ -121,8 +124,21 @@ public class InteractionDetector : MonoBehaviour
         return false;
     }
 
+    private bool TryGetFurnitureFloorHit(out RaycastHit hit)
+    {
+        if (Physics.Raycast(
+            transform.position,
+            transform.forward,
+            out hit,
+            interactionDistance,
+            floorLayer,
+            QueryTriggerInteraction.Ignore))
+        {
+            return hit.normal.y >= 0.9f;
+        }
 
-
+        return false;
+    }
 
 
 
@@ -187,7 +203,7 @@ public class InteractionDetector : MonoBehaviour
             return;
         }
 
-        if (!TryGetPlacementHit(out RaycastHit hit))
+        if (!TryGetFurnitureFloorHit(out RaycastHit hit))
         {
             Debug.Log("Không tìm thấy mặt sàn phù hợp.");
             return;
@@ -290,11 +306,30 @@ public class InteractionDetector : MonoBehaviour
         if (heldObject == null || previewObject == null)
             return;
 
-        if (!TryGetPlacementHit(out RaycastHit hit))
+
+        bool isFurniture =
+            heldObject != null &&
+            heldObject.Type == PlacementType.Furniture;
+
+        bool hasValidHit;
+
+        RaycastHit hit;
+
+        if (isFurniture)
+        {
+            hasValidHit = TryGetFurnitureFloorHit(out hit);
+        }
+        else
+        {
+            hasValidHit = TryGetPlacementHit(out hit);
+        }
+
+        if (!hasValidHit)
         {
             previewObject.SetActive(false);
             return;
         }
+
 
         // Nhánh đặt nội thất tự do trong cửa hàng.
 
