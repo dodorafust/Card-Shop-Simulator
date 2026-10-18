@@ -1,0 +1,19 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 761bdaa2d3ab34e4ba30f2b736a1a2b3, type: 3}
+  m_Name: PAD_001_MousePad
+  m_EditorClassIdentifier: Assembly-CSharp::ProductDefinition
+  productId: PAD_001
+  displayName: Mouse Pad Basic
+  category: 0
+  basePrice: 100
+  worldPrefab: {fileID: 2791395862158467863, guid: 95775d7ce5c320641917ed12bb27ce53, type: 3}

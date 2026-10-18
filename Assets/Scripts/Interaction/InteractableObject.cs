@@ -7,7 +7,6 @@ public enum PlacementType
     Furniture
 }
 
-
 [RequireComponent(typeof(Rigidbody))]
 [RequireComponent(typeof(BoxCollider))]
 
@@ -15,6 +14,8 @@ public class InteractableObject : MonoBehaviour
 {
     private Rigidbody rb;
     private BoxCollider boxCollider;
+    private Collider[] boxColliders;
+    private bool[] boxColliderWasEnabled;
     private Transform originalParent;
     private ShelfSlot currentShelfSlot;
     private bool isHeld;
@@ -23,8 +24,11 @@ public class InteractableObject : MonoBehaviour
     [SerializeField]
     private PlacementType placementType = PlacementType.ShelfProduct;
 
-    public PlacementType Type => placementType;
+    [SerializeField]
+    private ProductDefinition productDefinition;
 
+    public PlacementType Type => placementType;
+    public ProductDefinition Product => productDefinition;
 
     public bool IsHeld => isHeld;
 
@@ -32,6 +36,15 @@ public class InteractableObject : MonoBehaviour
     {
         rb = GetComponent<Rigidbody>();
         boxCollider = GetComponent<BoxCollider>();
+
+        if (productDefinition != null)
+        {
+            Debug.Log(
+                $"Sản phẩm: {productDefinition.DisplayName} | " +
+                $"ID: {productDefinition.ProductId} | " +
+                $"Giá cơ bản: {productDefinition.BasePrice}",
+                this);
+        }
     }
 
     public virtual void Interact(Transform holdPoint)
@@ -50,7 +63,23 @@ public class InteractableObject : MonoBehaviour
         rb.linearVelocity = Vector3.zero;
         rb.angularVelocity = Vector3.zero;
 
-        boxCollider.enabled = false;
+        if (GetComponent<BoxContents>() != null)
+        {
+            // Lưu trạng thái collider trước khi tắt.
+            boxColliders = GetComponentsInChildren<Collider>(true);
+            boxColliderWasEnabled = new bool[boxColliders.Length];
+
+            for (int i = 0; i < boxColliders.Length; i++)
+            {
+                boxColliderWasEnabled[i] = boxColliders[i].enabled;
+                boxColliders[i].enabled = false;
+            }
+        }
+        else
+        {
+            // Giữ nguyên hành vi hiện tại của các vật thể khác.
+            boxCollider.enabled = false;
+        }
 
         // Lưu góc xoay thế giới trước khi gắn vào HoldPoint.
         if (placementType == PlacementType.Furniture)
@@ -151,7 +180,25 @@ public class InteractableObject : MonoBehaviour
         transform.SetPositionAndRotation(
             placePosition, placeRotation);
 
-        boxCollider.enabled = true;
+        if (GetComponent<BoxContents>() != null &&
+            boxColliders != null &&
+            boxColliderWasEnabled != null)
+        {
+            for (int i = 0; i < boxColliders.Length; i++)
+            {
+                if (boxColliders[i] != null)
+                {
+                    boxColliders[i].enabled = boxColliderWasEnabled[i];
+                }
+            }
+
+            boxColliders = null;
+            boxColliderWasEnabled = null;
+        }
+        else
+        {
+            boxCollider.enabled = true;
+        }
         rb.isKinematic = false;
         isHeld = false;
         // Hiện lại mô hình sau khi đặt nội thất xuống.
@@ -167,6 +214,31 @@ public class InteractableObject : MonoBehaviour
         return true;
     }
 
+    public bool PlaceDirectlyAtSlot(Transform slotTransform)
+    {
+        if (slotTransform == null || isHeld)
+            return false;
+
+        if (currentShelfSlot != null)
+        {
+            currentShelfSlot.Release(this);
+            currentShelfSlot = null;
+        }
+
+        // Đặt sản phẩm thành con của đối tượng chứa slot.
+        transform.SetParent(slotTransform.parent, true);
+        transform.SetPositionAndRotation(
+            slotTransform.position,
+            slotTransform.rotation);
+
+        boxCollider.enabled = true;
+
+        rb.linearVelocity = Vector3.zero;
+        rb.angularVelocity = Vector3.zero;
+        rb.isKinematic = false;
+
+        return true;
+    }
 
     public void RotateHeld(float angle)
     {
