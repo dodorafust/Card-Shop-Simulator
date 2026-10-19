@@ -18,6 +18,7 @@ public class InteractableObject : MonoBehaviour
     private bool[] boxColliderWasEnabled;
     private Transform originalParent;
     private ShelfSlot currentShelfSlot;
+    public ShelfSlot CurrentShelfSlot => currentShelfSlot;
     private bool isHeld;
     private float furnitureRotationY;
 

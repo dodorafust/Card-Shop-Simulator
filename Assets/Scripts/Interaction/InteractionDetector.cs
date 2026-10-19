@@ -16,6 +16,17 @@ public class InteractionDetector : MonoBehaviour
     [Header("Furniture Placement")]
     [SerializeField] private LayerMask floorLayer;
 
+    [Header("Bulk Shelf Collection")]
+    [SerializeField, Min(0.05f)]
+    private float collectionInterval = 0.15f;
+    private float nextCollectionTime;
+
+    [Header("Shelf Restocking")]
+    [SerializeField, Min(0.05f)]
+    private float restockInterval = 0.15f;
+
+    private float nextRestockTime;
+
     [SerializeField]
     private ShopPlacementArea shopPlacementArea;
     private InteractableObject currentTarget;
@@ -108,17 +119,40 @@ public class InteractionDetector : MonoBehaviour
         }
 
 
+
         if (Mouse.current != null &&
-            Mouse.current.leftButton.wasPressedThisFrame &&
-            heldObject != null)
+            Mouse.current.leftButton.isPressed &&
+            heldObject != null &&
+            Time.time >= nextRestockTime)
         {
             BoxContents heldBox = heldObject.GetComponent<BoxContents>();
 
             if (heldBox != null && heldBox.IsOpen)
             {
                 TryRestockShelf(heldBox);
+
+                // Giới hạn tốc độ fill khi giữ chuột.
+                nextRestockTime = Time.time + restockInterval;
             }
         }
+
+
+
+        if (Mouse.current != null &&
+            Mouse.current.rightButton.isPressed &&
+            heldObject != null &&
+            Time.time >= nextCollectionTime)
+        {
+            BoxContents heldBox = heldObject.GetComponent<BoxContents>();
+
+            if (heldBox != null && heldBox.IsOpen)
+            {
+                TryCollectFromTargetShelf(heldBox);
+                nextCollectionTime = Time.time + collectionInterval;
+            }
+        }
+
+
 
         if (heldObject != null &&
             Keyboard.current != null &&
@@ -152,8 +186,6 @@ public class InteractionDetector : MonoBehaviour
         currentTarget = detectedTarget;
         currentBoxTarget = detectedBox;
     }
-
-
 
     private bool TryGetPlacementHit(out RaycastHit hit)
     {
@@ -404,10 +436,6 @@ public class InteractionDetector : MonoBehaviour
             DestroyPreview();
         }
     }
-
-
-
-
 
     private void CreatePreview()
     {
@@ -701,4 +729,93 @@ public class InteractionDetector : MonoBehaviour
         Debug.Log("Đã đặt thùng hàng xuống sàn.");
     }
 
+    private void TryTakeShelfProductIntoBox(BoxContents box)
+    {
+        if (box == null || !box.IsOpen)
+        {
+            Debug.Log("Cần mở thùng hàng trước.");
+            return;
+        }
+
+        if (!Physics.Raycast(
+            transform.position,
+            transform.forward,
+            out RaycastHit hit,
+            interactionDistance,
+            Physics.DefaultRaycastLayers,
+            QueryTriggerInteraction.Ignore))
+        {
+            return;
+        }
+
+        InteractableObject item =
+            hit.collider.GetComponentInParent<InteractableObject>();
+
+        if (item == null || item.IsHeld)
+            return;
+
+        ShelfSlot slot = item.CurrentShelfSlot;
+
+        if (slot == null || slot.Occupant != item)
+        {
+            Debug.Log("Sản phẩm không nằm trong slot của kệ.");
+            return;
+        }
+
+        if (item.Product == null || item.Product != box.Product)
+        {
+            Debug.Log("Sản phẩm không phù hợp với thùng hàng.");
+            return;
+        }
+
+        // Tăng số lượng trước. Nếu thất bại, giữ nguyên sản phẩm trên kệ.
+        if (!box.TryAdd(1))
+        {
+            Debug.LogWarning("Không thể thêm sản phẩm vào thùng.", box);
+            return;
+        }
+
+        // Giải phóng slot rồi xóa sản phẩm khỏi thế giới.
+        InteractableObject removedItem = slot.TakeOccupant();
+
+        if (removedItem != item)
+        {
+            // Hoàn tác số lượng nếu slot không còn chứa sản phẩm dự kiến.
+            box.TryTake(1);
+            Debug.LogError("Trạng thái slot đã thay đổi; đã hoàn tác số lượng.", slot);
+            return;
+        }
+
+        Destroy(removedItem.gameObject);
+
+        Debug.Log(
+            $"Đã lấy 1 {box.Product.DisplayName} từ kệ về thùng. " +
+            $"Số lượng trong thùng: {box.Quantity}",
+            box);
+    }
+
+    private void TryCollectFromTargetShelf(BoxContents box)
+    {
+        if (box == null || !box.IsOpen)
+            return;
+
+        if (!Physics.Raycast(
+            transform.position,
+            transform.forward,
+            out RaycastHit hit,
+            interactionDistance,
+            Physics.DefaultRaycastLayers,
+            QueryTriggerInteraction.Collide))
+        {
+            return;
+        }
+
+        ShelfRestockZone shelfZone =
+            hit.collider.GetComponentInParent<ShelfRestockZone>();
+
+        if (shelfZone == null)
+            return;
+
+        shelfZone.TryCollectOneMatchingProduct(box);
+    }
 }

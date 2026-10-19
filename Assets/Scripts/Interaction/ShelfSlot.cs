@@ -41,4 +41,17 @@ public class ShelfSlot : MonoBehaviour
         if (Occupant == item)
             Occupant = null;
     }
+
+    public InteractableObject TakeOccupant()
+    {
+        if (Occupant == null)
+            return null;
+
+        InteractableObject item = Occupant;
+
+        Occupant = null;
+        item.SetShelfSlot(null);
+
+        return item;
+    }
 }

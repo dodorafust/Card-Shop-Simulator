@@ -26,6 +26,26 @@ public class ShelfRestockZone : MonoBehaviour
                 box);
             return false;
         }
+        // Nếu tầng đã có hàng, chỉ chấp nhận cùng loại sản phẩm.
+        foreach (ShelfSlot slot in slots)
+        {
+            if (slot == null || !slot.IsOccupied)
+                continue;
+
+            InteractableObject existingItem = slot.Occupant;
+
+            if (existingItem == null)
+                continue;
+
+            if (existingItem.Product != product)
+            {
+                Debug.Log(
+                    "Tầng kệ đang chứa loại sản phẩm khác.",
+                    this);
+
+                return false;
+            }
+        }
 
         ShelfSlot targetSlot = FindNextEmptySlot();
 
@@ -93,5 +113,65 @@ public class ShelfRestockZone : MonoBehaviour
         }
 
         return null;
+    }
+
+
+    public bool TryCollectOneMatchingProduct(BoxContents box)
+    {
+        if (box == null || !box.IsOpen)
+            return false;
+
+        ProductDefinition boxProduct = box.Product;
+
+        if (boxProduct == null || slots == null)
+            return false;
+
+        // Duyệt từ cuối mảng về đầu mảng để lấy hàng
+        // theo thứ tự ngược với lúc fill.
+        for (int i = slots.Length - 1; i >= 0; i--)
+        {
+            ShelfSlot slot = slots[i];
+
+            if (slot == null || !slot.IsOccupied)
+                continue;
+
+            InteractableObject item = slot.Occupant;
+
+            if (item == null || item.IsHeld)
+                continue;
+
+            // Chỉ thu hồi sản phẩm cùng loại với thùng.
+            if (item.Product != boxProduct)
+                continue;
+
+            // Chỉ chuyển hàng vào thùng khi có thể thu hồi.
+            if (!box.TryAdd(1))
+                return false;
+
+            InteractableObject removedItem = slot.TakeOccupant();
+
+            if (removedItem != item)
+            {
+                // Hoàn tác nếu slot không còn hợp lệ.
+                box.TryTake(1);
+
+                Debug.LogError(
+                    "Không thể thu hồi sản phẩm: trạng thái slot đã thay đổi.",
+                    slot);
+
+                return false;
+            }
+
+            Destroy(removedItem.gameObject);
+
+            Debug.Log(
+                $"Đã thu hồi {boxProduct.DisplayName}. " +
+                $"Số lượng trong thùng: {box.Quantity}",
+                box);
+
+            return true;
+        }
+
+        return false;
     }
 }
