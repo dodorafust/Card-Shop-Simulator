@@ -2111,6 +2111,7 @@ GameObject:
   - component: {fileID: 1722601950}
   - component: {fileID: 1722601949}
   - component: {fileID: 1722601953}
+  - component: {fileID: 1722601954}
   m_Layer: 0
   m_Name: GameSystems
   m_TagString: Untagged
@@ -2189,6 +2190,21 @@ MonoBehaviour:
   boxContents: {fileID: 788488760}
   holdPoint: {fileID: 1461382357}
   targetSlot: {fileID: 1559045064}
+--- !u!114 &1722601954
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1722601948}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fc8b232d5587c224fab76c578edc849a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::BoxStockTransfer
+  inventory: {fileID: 1722601951}
+  boxContents: {fileID: 1487474560}
+  quantity: 5
 --- !u!1 &1842313632
 GameObject:
   m_ObjectHideFlags: 0
@@ -2749,7 +2765,7 @@ Transform:
   m_GameObject: {fileID: 2112982475}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -0.65, y: 0.83685, z: 0.278}
+  m_LocalPosition: {x: -1.269, y: 0.83685, z: 0.278}
   m_LocalScale: {x: 0.84455, y: 0.32737988, z: 0.53611}
   m_ConstrainProportionsScale: 0
   m_Children: []
